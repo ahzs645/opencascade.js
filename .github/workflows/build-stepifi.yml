@@ -1,0 +1,166 @@
+name: Build Stepifi WASM
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'builds/opencascade.stepifi.yml'
+      - 'src/**'
+      - '.github/workflows/build-stepifi.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'builds/opencascade.stepifi.yml'
+      - 'src/**'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild even if no changes'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  DOCKER_IMAGE: opencascade-stepifi-builder
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hours max (WASM builds can be slow)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-stepifi-${{ hashFiles('Dockerfile', 'src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-stepifi-
+
+      - name: Build Docker image (base + compile stages)
+        run: |
+          docker build \
+            --target custom-build-image \
+            --tag ${{ env.DOCKER_IMAGE }}:latest \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            .
+
+      - name: Save Docker cache
+        run: |
+          docker save ${{ env.DOCKER_IMAGE }}:latest | gzip > /tmp/.buildx-cache/image.tar.gz || true
+
+      - name: Build Stepifi WASM
+        run: |
+          mkdir -p dist
+          docker run --rm \
+            -v "$(pwd)/builds:/src/builds:ro" \
+            -v "$(pwd)/dist:/opencascade.js/dist" \
+            ${{ env.DOCKER_IMAGE }}:latest \
+            /src/builds/opencascade.stepifi.yml
+
+      - name: List build outputs
+        run: |
+          echo "=== Build outputs ==="
+          ls -la dist/
+          echo "=== File sizes ==="
+          du -h dist/*
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencascade-stepifi-wasm
+          path: |
+            dist/opencascade.stepifi.js
+            dist/opencascade.stepifi.wasm
+            dist/opencascade.stepifi.d.ts
+          retention-days: 30
+
+      - name: Upload to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/opencascade.stepifi.js
+            dist/opencascade.stepifi.wasm
+            dist/opencascade.stepifi.d.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Optional: Test the built WASM
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: opencascade-stepifi-wasm
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install test dependencies
+        working-directory: test
+        run: npm install
+
+      - name: Run basic smoke test
+        run: |
+          node --experimental-vm-modules -e "
+            import initOpenCascade from './dist/opencascade.stepifi.js';
+
+            const oc = await initOpenCascade();
+
+            // Test basic geometry creation (gp_Pnt)
+            const p1 = new oc.gp_Pnt_3(0, 0, 0);
+            const p2 = new oc.gp_Pnt_3(10, 0, 0);
+            const p3 = new oc.gp_Pnt_3(10, 10, 0);
+
+            console.log('Points created:', p1.X(), p1.Y(), p1.Z());
+
+            // Test edge creation
+            const edge = new oc.BRepBuilderAPI_MakeEdge_3(p1, p2);
+            if (!edge.IsDone()) {
+              throw new Error('Failed to create edge');
+            }
+
+            console.log('Edge created successfully');
+
+            // Test bounding box
+            const bbox = new oc.Bnd_Box();
+            console.log('Bounding box created');
+
+            // Test GProp
+            const props = new oc.GProp_GProps_1();
+            console.log('GProp created');
+
+            // Test compound builder
+            const builder = new oc.BRep_Builder();
+            const compound = new oc.TopoDS_Compound();
+            builder.MakeCompound(compound);
+            console.log('Compound created');
+
+            console.log('All smoke tests passed!');
+          "
