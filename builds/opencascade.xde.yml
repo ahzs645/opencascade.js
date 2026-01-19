@@ -1,0 +1,101 @@
+# Custom OpenCascade.js Build Configuration
+# Purpose: Enable XDE/XCAF support for STEP file metadata extraction
+#
+# This configuration adds bindings for:
+# - STEPCAFControl (XDE-aware STEP reader/writer)
+# - XCAFDoc (XCAF document tools for metadata)
+# - TDocStd (Document management)
+# - Color, Material, Layer tools
+#
+# Build with: docker run --rm -v "$(pwd):/src" donalffons/opencascade.js
+
+bindings:
+  # ===== STEP CAF Control (XDE-aware STEP I/O) =====
+  - symbol: STEPCAFControl_Reader
+  - symbol: STEPCAFControl_Writer_1
+
+  # ===== Document Handling =====
+  - symbol: TDocStd_Document
+  - symbol: Handle_TDocStd_Document
+  - symbol: TDocStd_Application
+
+  # ===== XCAF Document Tools =====
+  - symbol: XCAFDoc_DocumentTool
+
+  # Shape Tool (assembly hierarchy)
+  - symbol: XCAFDoc_ShapeTool
+  - symbol: Handle_XCAFDoc_ShapeTool
+
+  # Color Tool (part colors from STEP)
+  - symbol: XCAFDoc_ColorTool
+  - symbol: Handle_XCAFDoc_ColorTool
+
+  # Material Tool (material properties)
+  - symbol: XCAFDoc_MaterialTool
+  - symbol: Handle_XCAFDoc_MaterialTool
+
+  # Layer Tool (layer assignments)
+  - symbol: XCAFDoc_LayerTool
+  - symbol: Handle_XCAFDoc_LayerTool
+
+  # ===== Label Handling (tree navigation) =====
+  - symbol: TDF_Label
+  - symbol: TDF_LabelSequence
+  - symbol: Handle_TDF_LabelSequence
+  - symbol: TDF_ChildIterator
+
+  # ===== Data Standard (attributes) =====
+  - symbol: TDataStd_Name
+  - symbol: Handle_TDataStd_Name
+  - symbol: TDataStd_TreeNode
+  - symbol: Handle_TDataStd_TreeNode
+
+  # ===== Color Types =====
+  - symbol: Quantity_Color
+  - symbol: Quantity_ColorRGBA
+  - symbol: Quantity_TOC_RGB
+
+  # ===== Return Status =====
+  - symbol: IFSelect_ReturnStatus
+  - symbol: IFSelect_RetDone
+  - symbol: IFSelect_RetVoid
+  - symbol: IFSelect_RetFail
+  - symbol: IFSelect_RetError
+  - symbol: IFSelect_RetStop
+
+  # ===== Shape Types (keep existing support) =====
+  - symbol: TopoDS_Shape
+  - symbol: TopoDS_Compound
+  - symbol: TopoDS_Solid
+  - symbol: TopoDS_Face
+  - symbol: TopoDS_Edge
+  - symbol: TopoDS_Vertex
+
+  # ===== Geometry (for mesh extraction) =====
+  - symbol: BRepMesh_IncrementalMesh_2
+  - symbol: BRep_Tool
+  - symbol: Poly_Triangulation
+  - symbol: TopLoc_Location_1
+  - symbol: TopLoc_Location
+
+  # ===== Exploration (topology traversal) =====
+  - symbol: TopExp_Explorer_2
+  - symbol: TopAbs_ShapeEnum
+  - symbol: TopAbs_COMPOUND
+  - symbol: TopAbs_SOLID
+  - symbol: TopAbs_FACE
+  - symbol: TopAbs_SHAPE
+
+  # ===== Standard Types =====
+  - symbol: Standard_Transient
+  - symbol: Handle_Standard_Transient
+
+  # ===== Transformation (assembly placement) =====
+  - symbol: gp_Trsf
+  - symbol: gp_XYZ
+  - symbol: gp_Pnt
+  - symbol: TopLoc_Location
+
+  # ===== String Handling =====
+  - symbol: TCollection_ExtendedString
+  - symbol: TCollection_AsciiString

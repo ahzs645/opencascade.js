@@ -51,13 +51,29 @@ verifyBindings(buildConfig["mainBuild"]["bindings"])
 for extraBuild in buildConfig["extraBuilds"]:
   verifyBindings(extraBuild)
 
+# def shouldProcessSymbol(symbol: str, bindings) -> bool:
+#     if len(bindings) == 0:
+#         return True
+#     entry = next((b for b in bindings if b["symbol"] == symbol), None)
+#     if not entry is None:
+#         return True
+#     return False
+
+
 def shouldProcessSymbol(symbol: str, bindings) -> bool:
-  if len(bindings) == 0:
-    return True
-  entry = next((b for b in bindings if b["symbol"] == symbol), None)
-  if not entry is None:
-    return True
-  return False
+    if not bindings:
+        return True
+
+    # Split into include and exclude sets
+    include_set = {b["symbol"] for b in bindings if not b["symbol"].startswith("--")}
+    exclude_set = {b["symbol"][2:] for b in bindings if b["symbol"].startswith("--")}
+
+    if include_set:
+        # Only include symbols explicitly listed
+        return symbol in include_set
+    else:
+        # Include everything except symbols exactly in exclude_set
+        return symbol not in exclude_set
 
 typescriptDefinitions = []
 for dirpath, dirnames, filenames in os.walk(libraryBasePath + "/bindings"):
