@@ -230,3 +230,7 @@ if buildConfig["generateTypescriptDefinitions"]:
 
   with open(os.getcwd() + "/" + os.path.splitext(buildConfig["mainBuild"]["name"])[0] + ".d.ts", "w") as typescriptDefinitionsFile:
     typescriptDefinitionsFile.write(typescriptDefinitionOutput)
+
+# Save config hash after successful build
+saveConfigHash(args.filename)
+print("Build completed successfully. Config hash saved.")

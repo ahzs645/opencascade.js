@@ -1,0 +1,175 @@
+# Minimal OpenCascade.js Build Configuration
+# Based on JupyterCAD's focused symbol set (~101 symbols)
+#
+# This is a lightweight build optimized for:
+# - Basic CAD operations (primitives, booleans, fillets)
+# - STEP file import
+# - Mesh generation and triangulation
+# - Smaller WASM file size and faster load times
+#
+# Build with:
+#   cd builds/minimal
+#   docker run --rm -it -v "$(pwd):/src" -u "$(id -u):$(id -g)" ocjs-base config.yml
+
+mainBuild:
+    name: ocjs.minimal.js
+    bindings:
+        # Adaptor classes
+        - symbol: Adaptor2d_Curve2d
+        - symbol: Adaptor3d_Curve
+
+        # BRep Builder and Tools
+        - symbol: BRep_Builder
+        - symbol: BRep_Tool
+        - symbol: BRepAdaptor_Curve
+
+        # Boolean Operations
+        - symbol: BRepAlgoAPI_Algo
+        - symbol: BRepAlgoAPI_BooleanOperation
+        - symbol: BRepAlgoAPI_BuilderAlgo
+        - symbol: BRepAlgoAPI_Common
+        - symbol: BRepAlgoAPI_Cut
+        - symbol: BRepAlgoAPI_Fuse
+
+        # Shape Building
+        - symbol: BRepBuilderAPI_Command
+        - symbol: BRepBuilderAPI_Copy
+        - symbol: BRepBuilderAPI_FaceError
+        - symbol: BRepBuilderAPI_MakeEdge
+        - symbol: BRepBuilderAPI_MakeFace
+        - symbol: BRepBuilderAPI_MakeShape
+        - symbol: BRepBuilderAPI_MakeVertex
+        - symbol: BRepBuilderAPI_MakeWire
+        - symbol: BRepBuilderAPI_ModifyShape
+
+        # Fillets and Chamfers
+        - symbol: BRepFilletAPI_LocalOperation
+        - symbol: BRepFilletAPI_MakeChamfer
+        - symbol: BRepFilletAPI_MakeFillet
+        - symbol: ChFi3d_FilletShape
+
+        # Properties
+        - symbol: BRepGProp
+        - symbol: GProp_GProps
+        - symbol: GProp_PrincipalProps
+
+        # Meshing
+        - symbol: BRepMesh_DiscretRoot
+        - symbol: BRepMesh_IncrementalMesh
+
+        # Primitives
+        - symbol: BRepPrimAPI_MakeBox
+        - symbol: BRepPrimAPI_MakeCone
+        - symbol: BRepPrimAPI_MakeCylinder
+        - symbol: BRepPrimAPI_MakeOneAxis
+        - symbol: BRepPrimAPI_MakePrism
+        - symbol: BRepPrimAPI_MakeSphere
+        - symbol: BRepPrimAPI_MakeSweep
+        - symbol: BRepPrimAPI_MakeTorus
+
+        # BRep Tools
+        - symbol: BRepTools
+
+        # Geometry Construction
+        - symbol: GC_MakeCircle
+        - symbol: GC_MakeSegment
+        - symbol: GC_Root
+        - symbol: GCPnts_TangentialDeflection
+
+        # Geometry Classes
+        - symbol: Geom_Circle
+        - symbol: Geom_Conic
+        - symbol: Geom_Curve
+        - symbol: Geom_Geometry
+        - symbol: Geom_TrimmedCurve
+
+        # Geometry Primitives (gp_*)
+        - symbol: gp_Ax1
+        - symbol: gp_Ax2
+        - symbol: gp_Circ
+        - symbol: gp_Dir
+        - symbol: gp_Lin
+        - symbol: gp_Mat
+        - symbol: gp_Pln
+        - symbol: gp_Pnt
+        - symbol: gp_Trsf
+        - symbol: gp_Vec
+        - symbol: gp_XYZ
+
+        # Handles
+        - symbol: Handle_Geom_Circle
+        - symbol: Handle_Geom_Curve
+        - symbol: Handle_Geom_TrimmedCurve
+        - symbol: Handle_Poly_Polygon3D
+        - symbol: Handle_Poly_PolygonOnTriangulation
+        - symbol: Handle_Poly_Triangulation
+
+        # I/O
+        - symbol: IFSelect_ReturnStatus
+        - symbol: RWStl
+        - symbol: STEPControl_Reader
+        - symbol: StlAPI_Writer
+        - symbol: XSControl_Reader
+
+        # Message
+        - symbol: Message_ProgressRange
+
+        # Collections
+        - symbol: NCollection_BaseList
+        - symbol: NCollection_BaseMap
+        - symbol: TColgp_Array1OfDir
+        - symbol: TColgp_Array1OfPnt
+        - symbol: TColStd_Array1OfInteger
+
+        # Polygon/Triangulation
+        - symbol: Poly_Array1OfTriangle
+        - symbol: Poly_Connect
+        - symbol: Poly_PolygonOnTriangulation
+        - symbol: Poly_Triangle
+        - symbol: Poly_Triangulation
+
+        # Standard
+        - symbol: Standard_Transient
+        - symbol: StdPrs_ToolTriangulatedShape
+
+        # Topology Enums
+        - symbol: TopAbs_Orientation
+        - symbol: TopAbs_ShapeEnum
+
+        # Topology Exploration
+        - symbol: TopExp
+        - symbol: TopExp_Explorer
+        - symbol: TopLoc_Location
+
+        # TopoDS Classes
+        - symbol: TopoDS
+        - symbol: TopoDS_Builder
+        - symbol: TopoDS_Compound
+        - symbol: TopoDS_Edge
+        - symbol: TopoDS_Face
+        - symbol: TopoDS_Iterator
+        - symbol: TopoDS_Shape
+        - symbol: TopoDS_Shell
+        - symbol: TopoDS_Vertex
+        - symbol: TopoDS_Wire
+
+        # TopTools
+        - symbol: TopTools_FormatVersion
+        - symbol: TopTools_IndexedDataMapOfShapeListOfShape
+        - symbol: TopTools_IndexedMapOfShape
+        - symbol: TopTools_ListOfShape
+
+    emccFlags:
+        - -flto
+        - -fexceptions
+        - -sDISABLE_EXCEPTION_CATCHING=1
+        - -O3
+        - -sEXPORT_ES6=1
+        - -sUSE_ES6_IMPORT_META=0
+        - -sEXPORTED_RUNTIME_METHODS=['FS']
+        - -sINITIAL_MEMORY=15MB
+        - -sMAXIMUM_MEMORY=4GB
+        - -sALLOW_MEMORY_GROWTH=1
+        - -sLLD_REPORT_UNDEFINED
+        - --no-entry
+        - -sENVIRONMENT='web'
