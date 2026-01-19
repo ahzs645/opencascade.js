@@ -20,13 +20,10 @@ on:
         default: 'false'
         type: boolean
 
-env:
-  DOCKER_IMAGE: opencascade-stepifi-builder
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 3 hours max (WASM builds can be slow)
+    timeout-minutes: 120  # 2 hours max
 
     steps:
       - name: Checkout repository
@@ -34,52 +31,46 @@ jobs:
 
       - name: Free up disk space
         run: |
+          echo "=== Before cleanup ==="
+          df -h
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get clean
           sudo docker image prune --all --force
+          echo "=== After cleanup ==="
           df -h
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-stepifi-${{ hashFiles('Dockerfile', 'src/**') }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-stepifi-
-
-      - name: Build Docker image (base + compile stages)
+      - name: Pull pre-built OpenCascade.js Docker image
         run: |
-          docker build \
-            --target custom-build-image \
-            --tag ${{ env.DOCKER_IMAGE }}:latest \
-            --cache-from type=local,src=/tmp/.buildx-cache \
-            --build-arg BUILDKIT_INLINE_CACHE=1 \
-            .
-
-      - name: Save Docker cache
-        run: |
-          docker save ${{ env.DOCKER_IMAGE }}:latest | gzip > /tmp/.buildx-cache/image.tar.gz || true
+          # Use the official pre-built image instead of building from scratch
+          docker pull donalffons/opencascade.js:latest
 
       - name: Build Stepifi WASM
         run: |
           mkdir -p dist
+          echo "=== Starting WASM build ==="
+          echo "Building with config: builds/opencascade.stepifi.yml"
+
           docker run --rm \
             -v "$(pwd)/builds:/src/builds:ro" \
+            -v "$(pwd)/src:/opencascade.js/src:ro" \
             -v "$(pwd)/dist:/opencascade.js/dist" \
-            ${{ env.DOCKER_IMAGE }}:latest \
+            donalffons/opencascade.js:latest \
             /src/builds/opencascade.stepifi.yml
+
+          echo "=== Build complete ==="
 
       - name: List build outputs
         run: |
           echo "=== Build outputs ==="
-          ls -la dist/
+          ls -la dist/ || echo "No dist directory"
           echo "=== File sizes ==="
-          du -h dist/*
+          du -h dist/* 2>/dev/null || echo "No files in dist"
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
@@ -90,6 +81,7 @@ jobs:
             dist/opencascade.stepifi.wasm
             dist/opencascade.stepifi.d.ts
           retention-days: 30
+          if-no-files-found: error
 
       - name: Upload to release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
@@ -117,26 +109,26 @@ jobs:
           name: opencascade-stepifi-wasm
           path: dist/
 
+      - name: List downloaded files
+        run: ls -la dist/
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install test dependencies
-        working-directory: test
-        run: npm install
 
       - name: Run basic smoke test
         run: |
           node --experimental-vm-modules -e "
             import initOpenCascade from './dist/opencascade.stepifi.js';
 
+            console.log('Loading OpenCascade.js...');
             const oc = await initOpenCascade();
+            console.log('OpenCascade.js loaded successfully!');
 
             // Test basic geometry creation (gp_Pnt)
             const p1 = new oc.gp_Pnt_3(0, 0, 0);
             const p2 = new oc.gp_Pnt_3(10, 0, 0);
-            const p3 = new oc.gp_Pnt_3(10, 10, 0);
 
             console.log('Points created:', p1.X(), p1.Y(), p1.Z());
 
@@ -145,7 +137,6 @@ jobs:
             if (!edge.IsDone()) {
               throw new Error('Failed to create edge');
             }
-
             console.log('Edge created successfully');
 
             // Test bounding box

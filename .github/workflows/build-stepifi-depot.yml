@@ -1,0 +1,79 @@
+name: Build Stepifi WASM (Depot)
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'builds/opencascade.stepifi.yml'
+      - 'src/**'
+      - '.github/workflows/build-stepifi-depot.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'builds/opencascade.stepifi.yml'
+      - 'src/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
+      - name: Build Docker image with Depot
+        uses: depot/build-push-action@v1
+        with:
+          project: ${{ secrets.DEPOT_PROJECT_ID }}
+          token: ${{ secrets.DEPOT_TOKEN }}
+          target: test-image
+          tags: opencascade-stepifi:latest
+          load: true  # Load the image into local Docker
+
+      - name: Build Stepifi WASM
+        run: |
+          mkdir -p dist
+          echo "=== Starting WASM build ==="
+
+          docker run --rm \
+            -v "$(pwd)/builds:/src/builds:ro" \
+            -v "$(pwd)/src:/opencascade.js/src:ro" \
+            -v "$(pwd)/dist:/opencascade.js/dist" \
+            opencascade-stepifi:latest \
+            /src/builds/opencascade.stepifi.yml
+
+          echo "=== Build complete ==="
+
+      - name: List build outputs
+        run: |
+          echo "=== Build outputs ==="
+          ls -la dist/
+          echo "=== File sizes ==="
+          du -h dist/*
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencascade-stepifi-wasm
+          path: |
+            dist/opencascade.stepifi.js
+            dist/opencascade.stepifi.wasm
+            dist/opencascade.stepifi.d.ts
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/opencascade.stepifi.js
+            dist/opencascade.stepifi.wasm
+            dist/opencascade.stepifi.d.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
