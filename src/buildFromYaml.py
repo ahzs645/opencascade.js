@@ -3,6 +3,7 @@
 import os
 import subprocess
 import json
+import hashlib
 from itertools import chain
 import yaml
 from generateBindings import generateCustomCodeBindings
@@ -14,9 +15,73 @@ from Common import ocIncludePaths, additionalIncludePaths
 
 parser = ArgumentParser()
 parser.add_argument(dest="filename", help="Custom build input file (.yml)", metavar="FILE.yml")
+parser.add_argument("--add", dest="add_symbols", nargs="+", metavar="SYMBOL",
+                    help="Add one or more symbols to the build config (e.g., --add BRepPrimAPI_MakeBox gp_Pnt)")
+parser.add_argument("--force", action="store_true",
+                    help="Force rebuild even if config hasn't changed")
 args = parser.parse_args()
 
 libraryBasePath = "/opencascade.js/build"
+versionFilePath = os.path.join(os.path.dirname(args.filename), ".build_hash")
+
+def computeConfigHash(filename):
+  """Compute SHA-256 hash of the build configuration file."""
+  with open(filename, "rb") as f:
+    return hashlib.sha256(f.read()).hexdigest()
+
+def checkNeedsRebuild(filename):
+  """Check if rebuild is needed by comparing config hash."""
+  currentHash = computeConfigHash(filename)
+  if os.path.exists(versionFilePath):
+    with open(versionFilePath, "r") as f:
+      savedHash = f.read().strip()
+    if savedHash == currentHash:
+      return False
+  return True
+
+def saveConfigHash(filename):
+  """Save the current config hash after successful build."""
+  currentHash = computeConfigHash(filename)
+  with open(versionFilePath, "w") as f:
+    f.write(currentHash)
+
+def addSymbolsToConfig(filename, symbols):
+  """Add new symbols to the build config, filter duplicates, and sort."""
+  with open(filename, "r") as f:
+    config = yaml.safe_load(f)
+
+  # Get existing symbols
+  existingSymbols = {b["symbol"] for b in config["mainBuild"]["bindings"]}
+
+  # Add new symbols (avoiding duplicates)
+  newSymbols = [s for s in symbols if s not in existingSymbols]
+  if newSymbols:
+    for symbol in newSymbols:
+      config["mainBuild"]["bindings"].append({"symbol": symbol})
+
+    # Sort bindings by symbol name
+    config["mainBuild"]["bindings"].sort(key=lambda x: x["symbol"])
+
+    # Write back
+    with open(filename, "w") as f:
+      yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    print(f"Added {len(newSymbols)} new symbol(s): {', '.join(newSymbols)}")
+  else:
+    print("All specified symbols already exist in config")
+
+  return len(newSymbols) > 0
+
+# Handle --add flag: add symbols to config
+symbolsAdded = False
+if args.add_symbols:
+  symbolsAdded = addSymbolsToConfig(args.filename, args.add_symbols)
+
+# Check if rebuild is needed
+needsRebuild = args.force or symbolsAdded or checkNeedsRebuild(args.filename)
+if not needsRebuild:
+  print("Build config unchanged, skipping rebuild. Use --force to rebuild anyway.")
+  exit(0)
 
 buildConfig = yaml.safe_load(open(args.filename, "r"))
 schema = eval(open("/opencascade.js/src/customBuildSchema.py", "r").read())
@@ -156,163 +221,12 @@ if buildConfig["generateTypescriptDefinitions"]:
       })
 
   typescriptDefinitionOutput += \
-    "type Standard_Boolean = boolean;\n" + \
-    "type Standard_Byte = number;\n" + \
-    "type Standard_Character = number;\n" + \
-    "type Standard_CString = string;\n" + \
-    "type Standard_Integer = number;\n" + \
-    "type Standard_Real = number;\n" + \
-    "type Standard_ShortReal = number;\n" + \
-    "type Standard_Size = number;\n\n" + \
-    "declare namespace FS {\n" + \
-    "  interface Lookup {\n" + \
-    "      path: string;\n" + \
-    "      node: FSNode;\n" + \
-    "  }\n" + \
-    "\n" + \
-    "  interface FSStream {}\n" + \
-    "  interface FSNode {}\n" + \
-    "  interface ErrnoError {}\n" + \
-    "\n" + \
-    "  let ignorePermissions: boolean;\n" + \
-    "  let trackingDelegate: any;\n" + \
-    "  let tracking: any;\n" + \
-    "  let genericErrors: any;\n" + \
-    "\n" + \
-    "  //\n" + \
-    "  // paths\n" + \
-    "  //\n" + \
-    "  function lookupPath(path: string, opts: any): Lookup;\n" + \
-    "  function getPath(node: FSNode): string;\n" + \
-    "\n" + \
-    "  //\n" + \
-    "  // nodes\n" + \
-    "  //\n" + \
-    "  function isFile(mode: number): boolean;\n" + \
-    "  function isDir(mode: number): boolean;\n" + \
-    "  function isLink(mode: number): boolean;\n" + \
-    "  function isChrdev(mode: number): boolean;\n" + \
-    "  function isBlkdev(mode: number): boolean;\n" + \
-    "  function isFIFO(mode: number): boolean;\n" + \
-    "  function isSocket(mode: number): boolean;\n" + \
-    "\n" + \
-    "  //\n" + \
-    "  // devices\n" + \
-    "  //\n" + \
-    "  function major(dev: number): number;\n" + \
-    "  function minor(dev: number): number;\n" + \
-    "  function makedev(ma: number, mi: number): number;\n" + \
-    "  function registerDevice(dev: number, ops: any): void;\n" + \
-    "\n" + \
-    "  //\n" + \
-    "  // core\n" + \
-    "  //\n" + \
-    "  function syncfs(populate: boolean, callback: (e: any) => any): void;\n" + \
-    "  function syncfs(callback: (e: any) => any, populate?: boolean): void;\n" + \
-    "  function mount(type: any, opts: any, mountpoint: string): any;\n" + \
-    "  function unmount(mountpoint: string): void;\n" + \
-    "\n" + \
-    "  function mkdir(path: string, mode?: number): any;\n" + \
-    "  function mkdev(path: string, mode?: number, dev?: number): any;\n" + \
-    "  function symlink(oldpath: string, newpath: string): any;\n" + \
-    "  function rename(old_path: string, new_path: string): void;\n" + \
-    "  function rmdir(path: string): void;\n" + \
-    "  function readdir(path: string): any;\n" + \
-    "  function unlink(path: string): void;\n" + \
-    "  function readlink(path: string): string;\n" + \
-    "  function stat(path: string, dontFollow?: boolean): any;\n" + \
-    "  function lstat(path: string): any;\n" + \
-    "  function chmod(path: string, mode: number, dontFollow?: boolean): void;\n" + \
-    "  function lchmod(path: string, mode: number): void;\n" + \
-    "  function fchmod(fd: number, mode: number): void;\n" + \
-    "  function chown(path: string, uid: number, gid: number, dontFollow?: boolean): void;\n" + \
-    "  function lchown(path: string, uid: number, gid: number): void;\n" + \
-    "  function fchown(fd: number, uid: number, gid: number): void;\n" + \
-    "  function truncate(path: string, len: number): void;\n" + \
-    "  function ftruncate(fd: number, len: number): void;\n" + \
-    "  function utime(path: string, atime: number, mtime: number): void;\n" + \
-    "  function open(path: string, flags: string, mode?: number, fd_start?: number, fd_end?: number): FSStream;\n" + \
-    "  function close(stream: FSStream): void;\n" + \
-    "  function llseek(stream: FSStream, offset: number, whence: number): any;\n" + \
-    "  function read(stream: FSStream, buffer: ArrayBufferView, offset: number, length: number, position?: number): number;\n" + \
-    "  function write(\n" + \
-    "      stream: FSStream,\n" + \
-    "      buffer: ArrayBufferView,\n" + \
-    "      offset: number,\n" + \
-    "      length: number,\n" + \
-    "      position?: number,\n" + \
-    "      canOwn?: boolean,\n" + \
-    "  ): number;\n" + \
-    "  function allocate(stream: FSStream, offset: number, length: number): void;\n" + \
-    "  function mmap(\n" + \
-    "      stream: FSStream,\n" + \
-    "      buffer: ArrayBufferView,\n" + \
-    "      offset: number,\n" + \
-    "      length: number,\n" + \
-    "      position: number,\n" + \
-    "      prot: number,\n" + \
-    "      flags: number,\n" + \
-    "  ): any;\n" + \
-    "  function ioctl(stream: FSStream, cmd: any, arg: any): any;\n" + \
-    "  function readFile(path: string, opts: { encoding: 'binary'; flags?: string }): Uint8Array;\n" + \
-    "  function readFile(path: string, opts: { encoding: 'utf8'; flags?: string }): string;\n" + \
-    "  function readFile(path: string, opts?: { flags?: string }): Uint8Array;\n" + \
-    "  function writeFile(path: string, data: string | ArrayBufferView, opts?: { flags?: string }): void;\n" + \
-    "\n" + \
-    "  //\n" + \
-    "  // module-level FS code\n" + \
-    "  //\n" + \
-    "  function cwd(): string;\n" + \
-    "  function chdir(path: string): void;\n" + \
-    "  function init(\n" + \
-    "      input: null | (() => number | null),\n" + \
-    "      output: null | ((c: number) => any),\n" + \
-    "      error: null | ((c: number) => any),\n" + \
-    "  ): void;\n" + \
-    "\n" + \
-    "  function createLazyFile(\n" + \
-    "      parent: string | FSNode,\n" + \
-    "      name: string,\n" + \
-    "      url: string,\n" + \
-    "      canRead: boolean,\n" + \
-    "      canWrite: boolean,\n" + \
-    "  ): FSNode;\n" + \
-    "  function createPreloadedFile(\n" + \
-    "      parent: string | FSNode,\n" + \
-    "      name: string,\n" + \
-    "      url: string,\n" + \
-    "      canRead: boolean,\n" + \
-    "      canWrite: boolean,\n" + \
-    "      onload?: () => void,\n" + \
-    "      onerror?: () => void,\n" + \
-    "      dontCreateFile?: boolean,\n" + \
-    "      canOwn?: boolean,\n" + \
-    "  ): void;\n" + \
-    "  function createDataFile(\n" + \
-    "      parent: string | FSNode,\n" + \
-    "      name: string,\n" + \
-    "      data: ArrayBufferView | string,\n" + \
-    "      canRead: boolean,\n" + \
-    "      canWrite: boolean,\n" + \
-    "      canOwn: boolean,\n" + \
-    "  ): FSNode;\n" + \
-    "  interface AnalysisResults {\n" + \
-    "    isRoot: boolean,\n" + \
-    "    exists: boolean,\n" + \
-    "    error: Error,\n" + \
-    "    name: string,\n" + \
-    "    path: any,\n" + \
-    "    object: any,\n" + \
-    "    parentExists: boolean,\n" + \
-    "    parentPath: any,\n" + \
-    "    parentObject: any\n" + \
-    "  }\n" + \
-    "  function analyzePath(path: string): AnalysisResults;\n" + \
-    "}\n\n" + \
     "\nexport type OpenCascadeInstance = {FS: typeof FS} & {\n  " + ";\n  ".join(map(lambda x: x["export"] + ((": typeof " + x["export"]) if x["kind"] == "class" else (": " + x["export"] + "_Vals")), typescriptExports)) + ";\n" + \
-    "};\n\n" + \
-    "declare function init(args: {locateFile: (path: string, prefix: string) => string}): Promise<OpenCascadeInstance>;\n\n" + \
-    "export default init;\n"
+    "};\n\n"
 
-  typescriptDefinitionsFile = open(os.getcwd() + "/" + os.path.splitext(buildConfig["mainBuild"]["name"])[0] + ".d.ts", "w")
-  typescriptDefinitionsFile.write(typescriptDefinitionOutput)
+  # Read TypeScript extras from separate file
+  with open("/opencascade.js/src/tsExtras.d.ts", "r") as tsExtrasFile:
+    typescriptDefinitionOutput += tsExtrasFile.read()
+
+  with open(os.getcwd() + "/" + os.path.splitext(buildConfig["mainBuild"]["name"])[0] + ".d.ts", "w") as typescriptDefinitionsFile:
+    typescriptDefinitionsFile.write(typescriptDefinitionOutput)

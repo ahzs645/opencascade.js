@@ -1,5 +1,13 @@
+import os
+
 def filterIncludeFile(filename):
-  if not filename.endswith(".hxx"):
+  # Support .h, .hxx, and .gxx extensions
+  # .gxx files are used for inline method implementations in OCCT (e.g., LibCtl)
+  if os.path.splitext(filename)[1] not in [".h", ".hxx", ".gxx"]:
+    return False
+
+  # OpenGL is not available in WebAssembly/Emscripten
+  if filename.startswith("OpenGl_"):
     return False
 
   # fatal error: 'AIS_LocalStatus.hxx' file not found
