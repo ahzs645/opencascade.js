@@ -1,15 +1,13 @@
 #!/bin/bash
-# Build Stepifi WASM using Depot
+# Build Stepifi custom OpenCascade.js WASM using Depot
 #
 # Prerequisites:
 #   1. Install Depot CLI: brew install depot/tap/depot
 #   2. Login to Depot: depot login
+#   3. Update depot.json with your project ID
 #
 # Usage:
 #   ./scripts/build-stepifi.sh
-#
-# Options:
-#   --large    Use larger 32-CPU machine (faster, uses more build minutes)
 
 set -e
 
@@ -18,36 +16,29 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-# Parse arguments
-DEPOT_ARGS=""
-if [[ "$1" == "--large" ]]; then
-    echo "=== Using large machine (32 CPU) ==="
-    DEPOT_ARGS="--build-arg DEPOT_CPUS=32"
-fi
+echo "=== Building Stepifi WASM on Depot ==="
+echo "This will take ~5 minutes..."
+echo ""
 
-echo "=== Step 1: Building Docker image with Depot ==="
-echo "This builds ONLY the base image (no pre-compilation)"
+# Clean previous build
+rm -rf ./dist-stepifi
+mkdir -p ./dist-stepifi
+
+# Build on Depot
 depot build \
     -f Dockerfile.stepifi \
-    --tag opencascade-stepifi:latest \
-    --load \
     --platform linux/amd64 \
-    $DEPOT_ARGS \
+    --output type=local,dest=./dist-stepifi \
     .
 
-echo ""
-echo "=== Step 2: Building Stepifi WASM ==="
-echo "This compiles only the symbols needed for Stepifi"
-mkdir -p dist
-
-docker run --rm \
-    -v "$(pwd)/builds:/src/builds:ro" \
-    -v "$(pwd)/src:/opencascade.js/src:ro" \
-    -v "$(pwd)/dist:/opencascade.js/dist" \
-    opencascade-stepifi:latest \
-    /src/builds/opencascade.stepifi.yml
+# Copy to dist
+mkdir -p ./dist
+cp ./dist-stepifi/opencascade.stepifi.* ./dist/
 
 echo ""
-echo "=== Build complete ==="
+echo "=== Build Complete ==="
+echo ""
 echo "Output files:"
-ls -lh dist/opencascade.stepifi.* 2>/dev/null || echo "No output files found"
+ls -lh ./dist/opencascade.stepifi.*
+echo ""
+echo "Files are in ./dist/"

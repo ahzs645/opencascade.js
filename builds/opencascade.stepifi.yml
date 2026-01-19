@@ -1,19 +1,15 @@
 # Custom OpenCascade.js Build Configuration for Stepifi
 # Purpose: Minimal build for STL/3MF/F3D to STEP/STL conversion
 #
-# This configuration includes bindings for:
-# - Shape creation and topology building
-# - B-spline curves and surfaces (for F3D/ACIS support)
-# - Shape repair and face merging
-# - Shape analysis (bounding box, volume, area)
-# - STEP/STL I/O
+# IMPORTANT: Symbol names must match pre-compiled bindings (no _N suffixes)
 #
-# Build with: python src/buildFromYaml.py builds/opencascade.stepifi.yml
+# Build with: depot build -f Dockerfile.stepifi --platform linux/amd64 --target artifacts --output type=local,dest=./dist .
 
 mainBuild:
   name: opencascade.stepifi.js
   bindings:
     # ===== Core Topology (TopoDS) =====
+    - symbol: TopoDS
     - symbol: TopoDS_Shape
     - symbol: TopoDS_Solid
     - symbol: TopoDS_Shell
@@ -22,36 +18,29 @@ mainBuild:
     - symbol: TopoDS_Vertex
     - symbol: TopoDS_Wire
     - symbol: TopoDS_Compound
-    - symbol: TopoDS
     - symbol: TopoDS_Builder
+    - symbol: TopoDS_Iterator
 
     # ===== Topology Builders =====
+    - symbol: BRepBuilderAPI_Command
+    - symbol: BRepBuilderAPI_MakeShape
     - symbol: BRepBuilderAPI_MakeEdge
     - symbol: BRepBuilderAPI_MakeFace
     - symbol: BRepBuilderAPI_MakeShell
     - symbol: BRepBuilderAPI_MakeSolid
     - symbol: BRepBuilderAPI_MakeWire
-    - symbol: BRepBuilderAPI_Command
-    - symbol: BRepBuilderAPI_MakeShape
+    - symbol: BRepBuilderAPI_Sewing
     - symbol: BRep_Builder
     - symbol: BRep_Tool
 
     # ===== Topology Exploration =====
+    - symbol: TopExp
     - symbol: TopExp_Explorer
-    - symbol: TopExp_Explorer_2
     - symbol: TopAbs_ShapeEnum
-    - symbol: TopAbs_COMPOUND
-    - symbol: TopAbs_COMPSOLID
-    - symbol: TopAbs_SOLID
-    - symbol: TopAbs_SHELL
-    - symbol: TopAbs_FACE
-    - symbol: TopAbs_WIRE
-    - symbol: TopAbs_EDGE
-    - symbol: TopAbs_VERTEX
-    - symbol: TopAbs_SHAPE
     - symbol: TopAbs_Orientation
 
     # ===== Geometry Points/Directions/Axes =====
+    - symbol: gp
     - symbol: gp_Pnt
     - symbol: gp_Pnt2d
     - symbol: gp_Vec
@@ -64,63 +53,95 @@ mainBuild:
     - symbol: gp_Ax3
     - symbol: gp_XYZ
     - symbol: gp_Trsf
-    - symbol: gp
 
-    # ===== Analytical Curves =====
+    # ===== Analytical Geometry =====
+    - symbol: gp_Pln
     - symbol: gp_Lin
     - symbol: gp_Lin2d
     - symbol: gp_Circ
     - symbol: gp_Circ2d
     - symbol: gp_Elips
     - symbol: gp_Elips2d
-    - symbol: Geom_Line
-    - symbol: Geom_Circle
-    - symbol: Geom_Ellipse
-    - symbol: Geom2d_Line
-    - symbol: Geom2d_Circle
-    - symbol: Geom2d_Ellipse
+    - symbol: gp_Cone
+    - symbol: gp_Cylinder
+    - symbol: gp_Sphere
+    - symbol: gp_Torus
 
-    # ===== B-Spline Curves (3D) =====
-    - symbol: Geom_BSplineCurve
-    - symbol: Geom_Curve
-    - symbol: Geom_BoundedCurve
-    - symbol: Geom_TrimmedCurve
+    # ===== Base Geometry =====
     - symbol: Geom_Geometry
+    - symbol: Handle_Geom_Geometry
+
+    # ===== 3D Curves =====
+    - symbol: Geom_Curve
     - symbol: Handle_Geom_Curve
+    - symbol: Geom_BoundedCurve
+    - symbol: Handle_Geom_BoundedCurve
+    - symbol: Geom_BSplineCurve
     - symbol: Handle_Geom_BSplineCurve
+    - symbol: Geom_TrimmedCurve
     - symbol: Handle_Geom_TrimmedCurve
+    - symbol: Geom_Conic
+    - symbol: Handle_Geom_Conic
+    - symbol: Geom_Line
+    - symbol: Handle_Geom_Line
+    - symbol: Geom_Circle
+    - symbol: Handle_Geom_Circle
+    - symbol: Geom_Ellipse
+    - symbol: Handle_Geom_Ellipse
+    - symbol: Geom_Parabola
+    - symbol: Handle_Geom_Parabola
+    - symbol: Geom_Hyperbola
+    - symbol: Handle_Geom_Hyperbola
 
-    # ===== B-Spline Curves (2D - for parametric curves) =====
-    - symbol: Geom2d_BSplineCurve
-    - symbol: Geom2d_Curve
-    - symbol: Geom2d_BoundedCurve
-    - symbol: Geom2d_TrimmedCurve
+    # ===== 2D Curves =====
     - symbol: Geom2d_Geometry
-    - symbol: Geom2d_Conic
+    - symbol: Handle_Geom2d_Geometry
+    - symbol: Geom2d_Curve
     - symbol: Handle_Geom2d_Curve
+    - symbol: Geom2d_BoundedCurve
+    - symbol: Handle_Geom2d_BoundedCurve
+    - symbol: Geom2d_BSplineCurve
     - symbol: Handle_Geom2d_BSplineCurve
+    - symbol: Geom2d_TrimmedCurve
     - symbol: Handle_Geom2d_TrimmedCurve
+    - symbol: Geom2d_Conic
+    - symbol: Handle_Geom2d_Conic
+    - symbol: Geom2d_Line
+    - symbol: Handle_Geom2d_Line
+    - symbol: Geom2d_Circle
+    - symbol: Handle_Geom2d_Circle
+    - symbol: Geom2d_Ellipse
+    - symbol: Handle_Geom2d_Ellipse
 
-    # ===== B-Spline Surfaces =====
-    - symbol: Geom_BSplineSurface
+    # ===== Surfaces =====
     - symbol: Geom_Surface
-    - symbol: Geom_BoundedSurface
-    - symbol: Geom_Plane
-    - symbol: Geom_ElementarySurface
     - symbol: Handle_Geom_Surface
+    - symbol: Geom_BoundedSurface
+    - symbol: Handle_Geom_BoundedSurface
+    - symbol: Geom_BSplineSurface
     - symbol: Handle_Geom_BSplineSurface
+    - symbol: Geom_ElementarySurface
+    - symbol: Handle_Geom_ElementarySurface
+    - symbol: Geom_Plane
     - symbol: Handle_Geom_Plane
-
-    # ===== Additional Surfaces (for ACIS/F3D support) =====
     - symbol: Geom_CylindricalSurface
-    - symbol: Geom_SphericalSurface
-    - symbol: Geom_ToroidalSurface
-    - symbol: Geom_ConicalSurface
-    - symbol: Geom_RectangularTrimmedSurface
     - symbol: Handle_Geom_CylindricalSurface
+    - symbol: Geom_SphericalSurface
     - symbol: Handle_Geom_SphericalSurface
+    - symbol: Geom_ToroidalSurface
     - symbol: Handle_Geom_ToroidalSurface
+    - symbol: Geom_ConicalSurface
     - symbol: Handle_Geom_ConicalSurface
+    - symbol: Geom_SurfaceOfRevolution
+    - symbol: Handle_Geom_SurfaceOfRevolution
+    - symbol: Geom_OffsetSurface
+    - symbol: Handle_Geom_OffsetSurface
+    - symbol: Geom_SweptSurface
+    - symbol: Handle_Geom_SweptSurface
+    - symbol: Geom_SurfaceOfLinearExtrusion
+    - symbol: Handle_Geom_SurfaceOfLinearExtrusion
+    - symbol: Geom_RectangularTrimmedSurface
+    - symbol: Handle_Geom_RectangularTrimmedSurface
 
     # ===== Collections for B-Splines =====
     - symbol: TColgp_Array1OfPnt
@@ -131,16 +152,21 @@ mainBuild:
     - symbol: TColStd_Array2OfReal
 
     # ===== Shape Repair =====
+    - symbol: ShapeFix
     - symbol: ShapeFix_Shape
+    - symbol: Handle_ShapeFix_Shape
     - symbol: ShapeFix_Root
+    - symbol: Handle_ShapeFix_Root
     - symbol: ShapeFix_Shell
+    - symbol: Handle_ShapeFix_Shell
     - symbol: ShapeFix_Face
+    - symbol: Handle_ShapeFix_Face
     - symbol: ShapeFix_Wire
+    - symbol: Handle_ShapeFix_Wire
     - symbol: ShapeUpgrade_UnifySameDomain
 
     # ===== Shape Analysis =====
     - symbol: BRepCheck_Analyzer
-    - symbol: BRepCheck_Status
     - symbol: BRepGProp
     - symbol: GProp_GProps
     - symbol: BRepBndLib
@@ -148,24 +174,17 @@ mainBuild:
 
     # ===== Mesh Generation =====
     - symbol: BRepMesh_IncrementalMesh
-    - symbol: BRepMesh_IncrementalMesh_2
-    - symbol: BRepMesh_DiscretRoot
     - symbol: Poly_Triangulation
     - symbol: Handle_Poly_Triangulation
 
     # ===== Location/Transformation =====
     - symbol: TopLoc_Location
-    - symbol: TopLoc_Location_1
 
     # ===== STEP I/O =====
     - symbol: STEPControl_Writer
     - symbol: STEPControl_Reader
     - symbol: STEPControl_StepModelType
     - symbol: IFSelect_ReturnStatus
-    - symbol: IFSelect_RetDone
-    - symbol: IFSelect_RetVoid
-    - symbol: IFSelect_RetFail
-    - symbol: IFSelect_RetError
 
     # ===== STL I/O =====
     - symbol: StlAPI
@@ -181,19 +200,13 @@ mainBuild:
     # ===== Standard Types =====
     - symbol: Standard_Transient
     - symbol: Handle_Standard_Transient
-    - symbol: Standard_Failure
 
     # ===== String Handling =====
     - symbol: TCollection_AsciiString
     - symbol: TCollection_ExtendedString
 
-    # ===== Shape Collections/Iterators =====
+    # ===== Shape Collections =====
     - symbol: TopTools_ListOfShape
-    - symbol: TopoDS_Iterator
-
-    # ===== Custom Helper Classes =====
-    - symbol: OCJS
-    - symbol: OCJS_IO
 
   emccFlags:
     - -flto
@@ -207,44 +220,4 @@ mainBuild:
     - -sALLOW_MEMORY_GROWTH=1
     - -sENVIRONMENT='web,worker'
 
-additionalCppCode: |
-  #include <sstream>
-  #include <string>
-  #include <BRepTools.hxx>
-  #include <TopoDS_Shape.hxx>
-  #include <STEPControl_Writer.hxx>
-  #include <StlAPI.hxx>
-
-  // Helper class for exception handling
-  class OCJS {
-  public:
-    static Standard_Failure* getStandard_FailureData(intptr_t exceptionPtr) {
-      return reinterpret_cast<Standard_Failure*>(exceptionPtr);
-    }
-  };
-
-  // String-based I/O wrappers for methods that use Standard_OStream
-  // These avoid the "unbound types: std::basic_ostream<...>" error
-  class OCJS_IO {
-  public:
-    // BRepTools::Write (ostream overload) -> std::string
-    static std::string BRep_WriteToString(const TopoDS_Shape& shape) {
-      std::ostringstream ss;
-      BRepTools::Write(shape, ss);
-      return ss.str();
-    }
-
-    // TopoDS_Shape::DumpJson -> std::string
-    static std::string Shape_DumpJsonToString(const TopoDS_Shape& shape, Standard_Integer depth = -1) {
-      std::ostringstream ss;
-      shape.DumpJson(ss, depth);
-      return ss.str();
-    }
-
-    // TopoDS_Shape::Dump -> std::string
-    static std::string Shape_DumpToString(const TopoDS_Shape& shape) {
-      std::ostringstream ss;
-      shape.Dump(ss);
-      return ss.str();
-    }
-  };
+# No additional C++ code - Stepifi uses virtual filesystem for I/O

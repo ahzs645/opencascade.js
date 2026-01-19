@@ -5,19 +5,19 @@ on:
     branches: [master, main]
     paths:
       - 'builds/opencascade.stepifi.yml'
-      - 'src/**'
+      - 'Dockerfile.stepifi'
       - '.github/workflows/build-stepifi-depot.yml'
   pull_request:
     branches: [master, main]
     paths:
       - 'builds/opencascade.stepifi.yml'
-      - 'src/**'
+      - 'Dockerfile.stepifi'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -26,35 +26,21 @@ jobs:
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
 
-      - name: Build Docker image with Depot
+      - name: Build WASM with Depot
         uses: depot/build-push-action@v1
         with:
           project: ${{ secrets.DEPOT_PROJECT_ID }}
           token: ${{ secrets.DEPOT_TOKEN }}
-          target: test-image
-          tags: opencascade-stepifi:latest
-          load: true  # Load the image into local Docker
+          file: Dockerfile.stepifi
+          platforms: linux/amd64
+          outputs: type=local,dest=./dist-stepifi
 
-      - name: Build Stepifi WASM
+      - name: Extract WASM files
         run: |
           mkdir -p dist
-          echo "=== Starting WASM build ==="
-
-          docker run --rm \
-            -v "$(pwd)/builds:/src/builds:ro" \
-            -v "$(pwd)/src:/opencascade.js/src:ro" \
-            -v "$(pwd)/dist:/opencascade.js/dist" \
-            opencascade-stepifi:latest \
-            /src/builds/opencascade.stepifi.yml
-
-          echo "=== Build complete ==="
-
-      - name: List build outputs
-        run: |
+          cp ./dist-stepifi/opencascade.stepifi.* ./dist/
           echo "=== Build outputs ==="
-          ls -la dist/
-          echo "=== File sizes ==="
-          du -h dist/*
+          ls -lh ./dist/opencascade.stepifi.*
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
