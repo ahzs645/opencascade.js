@@ -3,9 +3,45 @@ mainBuild:
 
 additionalCppCode: |
   typedef Handle(IMeshTools_Context) Handle_IMeshTools_Context;
+
   class OCJS {
   public:
     static Standard_Failure* getStandard_FailureData(intptr_t exceptionPtr) {
       return reinterpret_cast<Standard_Failure*>(exceptionPtr);
+    }
+  };
+
+  // String-based I/O wrappers for methods that use Standard_OStream
+  // These avoid the "unbound types: std::basic_ostream<...>" error
+  #include <sstream>
+  #include <string>
+  #include <BRepTools.hxx>
+  #include <TopoDS_Shape.hxx>
+  #include <IGESControl_Writer.hxx>
+  #include <IGESControl_Controller.hxx>
+  #include <STEPControl_Writer.hxx>
+  #include <Interface_Static.hxx>
+
+  class OCJS_IO {
+  public:
+    // BRepTools::Write (ostream overload) -> std::string
+    static std::string BRep_WriteToString(const TopoDS_Shape& shape) {
+      std::ostringstream ss;
+      BRepTools::Write(shape, ss);
+      return ss.str();
+    }
+
+    // TopoDS_Shape::DumpJson -> std::string
+    static std::string Shape_DumpJsonToString(const TopoDS_Shape& shape, Standard_Integer depth = -1) {
+      std::ostringstream ss;
+      shape.DumpJson(ss, depth);
+      return ss.str();
+    }
+
+    // TopoDS_Shape::Dump -> std::string
+    static std::string Shape_DumpToString(const TopoDS_Shape& shape) {
+      std::ostringstream ss;
+      shape.Dump(ss);
+      return ss.str();
     }
   };

@@ -128,11 +128,28 @@ def filterMethodOrProperty(theClass, methodOrProperty):
     print("Using declarations are not supported! (" + theClass.spelling + ", " + methodOrProperty.spelling + ")")
     return False
 
+  # Filter out methods that return Standard_OStream (already handled)
   if (
     methodOrProperty.result_type.spelling.startswith("Standard_OStream") or
     methodOrProperty.type.spelling == "std::ifstream"
   ):
     return False
+
+  # Filter out methods with Standard_OStream/Standard_IStream parameters
+  # These cannot be used from JS due to unbound std::ostream/std::istream types
+  STREAM_MARKERS = [
+    'Standard_OStream', 'Standard_IStream',
+    'std::ostream', 'std::istream',
+    'basic_ostream', 'basic_istream',
+  ]
+  try:
+    for arg in methodOrProperty.get_arguments():
+      spelling = arg.type.spelling
+      canonical = arg.type.get_canonical().spelling
+      if any(m in spelling for m in STREAM_MARKERS) or any(m in canonical for m in STREAM_MARKERS):
+        return False
+  except Exception:
+    pass  # get_arguments may not be available on all method types
 
   # error: call to implicitly-deleted copy constructor of 'Aspect_VKeySet'
   # error: rvalue reference to type 'Aspect_VKeySet' cannot bind to lvalue of type 'Aspect_VKeySet'
