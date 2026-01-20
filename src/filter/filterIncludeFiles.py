@@ -1,9 +1,13 @@
 import os
 
 def filterIncludeFile(filename):
-  # Support .h, .hxx, and .gxx extensions
-  # .gxx files are used for inline method implementations in OCCT (e.g., LibCtl)
-  if os.path.splitext(filename)[1] not in [".h", ".hxx", ".gxx"]:
+  # Support .h and .hxx extensions only
+  # Note: .gxx files are template implementation files that require specific
+  # template parameters to be defined before inclusion. They should NOT be
+  # included as regular headers - they cause compilation errors like:
+  # "use of undeclared identifier 'AppBlend_AppSurf'" when included without
+  # the required template parameter macros defined.
+  if os.path.splitext(filename)[1] not in [".h", ".hxx"]:
     return False
 
   # OpenGL is not available in WebAssembly/Emscripten
@@ -92,6 +96,22 @@ def filterIncludeFile(filename):
 
   # error: expected member name or ';' after declaration specifiers
   if filename == "math_Householder.hxx":
+    return False
+
+  # error: ViewerTest_CmdParser.hxx has ArgInt method which conflicts with
+  # igesread.h macro: #define ArgInt 3
+  # This causes "expected member name or ';' after declaration specifiers" errors
+  if filename == "ViewerTest_CmdParser.hxx":
+    return False
+
+  # error: declaration of 'ExprIntrpparse' has a different language linkage
+  # This file has extern "C" declarations that conflict with C++ bindings
+  if filename == "ExprIntrp_yaccintrf.hxx":
+    return False
+
+  # error: This file is usable only in C++/CLI (.NET) programs
+  # NCollection_Haft.h is for .NET interop only
+  if filename == "NCollection_Haft.h":
     return False
 
   return True

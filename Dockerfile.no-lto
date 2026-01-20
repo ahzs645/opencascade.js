@@ -1,0 +1,112 @@
+# Dockerfile for OpenCascade.js WITHOUT LTO
+#
+# This builds everything from scratch without -flto to fix STEP export
+#
+# Build:
+#   depot build -f Dockerfile.no-lto --platform linux/amd64 --target artifacts --output type=local,dest=./dist-no-lto .
+
+FROM emscripten/emsdk:3.1.14 AS base-image
+
+RUN \
+  apt update -y && \
+  apt install -y \
+  bash \
+  build-essential \
+  cmake \
+  curl \
+  git \
+  libffi-dev \
+  libgdbm-dev \
+  libncurses5-dev \
+  libnss3-dev \
+  libreadline-dev \
+  libsqlite3-dev \
+  libssl-dev \
+  libbz2-dev \
+  npm \
+  python3 \
+  python3-pip \
+  python3-setuptools \
+  zlib1g-dev
+
+RUN \
+  pip install \
+  libclang==15.0.6.1 \
+  pyyaml==6.0 \
+  cerberus==1.3.4 \
+  argparse==1.4.0
+
+WORKDIR /rapidjson/
+RUN git clone -b v1.1.0 https://github.com/Tencent/rapidjson.git .
+
+WORKDIR /freetype/
+RUN git clone -b VER-2-13-0 https://github.com/freetype/freetype.git .
+
+WORKDIR /occt/
+RUN \
+  curl -L "https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_6_3.tar.gz" -o occt.tar.gz && \
+  tar -xvf occt.tar.gz --strip-components=1
+
+WORKDIR /opencascade.js/
+COPY src ./src
+WORKDIR /src/
+
+ARG threading=single-threaded
+ENV threading=$threading
+
+# ============================================================
+# Build stage: Apply patches and disable LTO
+# ============================================================
+FROM base-image AS build-image
+
+RUN \
+  mkdir /opencascade.js/build/ && \
+  mkdir /opencascade.js/dist/ && \
+  /opencascade.js/src/applyPatches.py
+
+# KEY FIX: Remove -flto from compileSources.py
+RUN sed -i 's/"-flto",/# "-flto", # DISABLED for STEP export/g' /opencascade.js/src/compileSources.py
+
+# KEY FIX: Remove -flto from compileBindings.py
+RUN sed -i 's/"-flto",/# "-flto", # DISABLED for STEP export/g' /opencascade.js/src/compileBindings.py
+
+# Generate bindings
+RUN /opencascade.js/src/generateBindings.py
+
+# Compile bindings (without LTO)
+RUN /opencascade.js/src/compileBindings.py ${threading}
+
+# Compile sources (without LTO)
+RUN /opencascade.js/src/compileSources.py ${threading}
+
+RUN \
+  chmod -R 777 /opencascade.js/ && \
+  chmod -R 777 /occt
+
+# ============================================================
+# Final build stage
+# ============================================================
+FROM build-image AS builder
+
+COPY builds/opencascade.full-step-fix.yml /opencascade.js/builds/
+
+WORKDIR /opencascade.js/
+
+# Build the final WASM
+RUN ./src/buildFromYaml.py /opencascade.js/builds/opencascade.full-step-fix.yml
+
+# Copy outputs
+RUN mkdir -p /output && \
+    cp /opencascade.js/opencascade.full.* /output/ 2>/dev/null || true
+
+# List what was built
+RUN ls -la /output/
+
+# ============================================================
+# Extract artifacts
+# ============================================================
+FROM scratch AS artifacts
+
+COPY --from=builder /output/opencascade.full.js /
+COPY --from=builder /output/opencascade.full.wasm /
+COPY --from=builder /output/opencascade.full.d.ts /

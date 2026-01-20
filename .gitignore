@@ -6,3 +6,5 @@ build-output.log
 pull-stages-output.log
 /occt-src/
 dist-stepifi
+dist-step-fix
+dist

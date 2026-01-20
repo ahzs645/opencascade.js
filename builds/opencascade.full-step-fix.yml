@@ -1,5 +1,38 @@
+# OpenCascade.js Full Build with STEP Export Fix
+#
+# This build configuration fixes the "getWasmTableEntry is not a function" error
+# that occurs during STEP export by:
+# 1. Disabling LTO (-flto removed) - prevents stripping of virtual functions
+# 2. Adding -sALLOW_TABLE_GROWTH - allows dynamic function table entries
+# 3. Keeping exception handling enabled for proper error handling
+#
+# Build with: python src/buildFromYaml.py builds/opencascade.full-step-fix.yml
+#
+# Trade-offs:
+# - Larger WASM file size (no LTO optimization)
+# - Slightly slower execution (less inlining)
+# - But STEP export should work!
+
 mainBuild:
   name: opencascade.full.js
+  emccFlags:
+    # Removed: -flto (was causing virtual functions to be stripped)
+    - -fexceptions
+    - -sDISABLE_EXCEPTION_CATCHING=0
+    - -O3
+    - -sEXPORT_ES6=1
+    - -sUSE_ES6_IMPORT_META=0
+    - -sEXPORTED_RUNTIME_METHODS=['FS']
+    - -sINITIAL_MEMORY=100MB
+    - -sMAXIMUM_MEMORY=4GB
+    - -sALLOW_MEMORY_GROWTH=1
+    - -sUSE_FREETYPE=1
+    - -sLLD_REPORT_UNDEFINED
+    - --no-entry
+    # NEW: Allow function table to grow dynamically
+    - -sALLOW_TABLE_GROWTH=1
+    # NEW: Keep all virtual functions (don't dead-code eliminate them)
+    - -fno-strict-aliasing
 
 additionalCppCode: |
   typedef Handle(IMeshTools_Context) Handle_IMeshTools_Context;

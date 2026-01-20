@@ -188,6 +188,17 @@ Or add to Dockerfile:
 FROM --platform=linux/amd64 donalffons/opencascade.js:latest
 ```
 
+### STEP Export fails with `getWasmTableEntry` error
+
+This is a known issue affecting STEP export. See [STEP_EXPORT_ISSUE.md](./STEP_EXPORT_ISSUE.md) for details and workarounds.
+
+**Quick workaround**: Use BREP export instead:
+```javascript
+// BREP export works reliably
+oc.BRepTools.Write_3(shape, '/tmp/output.brep', progressRange)
+const brepContent = oc.FS.readFile('/tmp/output.brep', { encoding: 'utf8' })
+```
+
 ## Symbols for Stepifi
 
 The Stepifi application needs these OpenCascade features:
@@ -309,3 +320,4 @@ async function main() {
 - [OpenCascade.js GitHub](https://github.com/donalffons/opencascade.js)
 - [Depot Documentation](https://depot.dev/docs)
 - [Emscripten Documentation](https://emscripten.org/docs/)
+- [STEP Export Issue](./STEP_EXPORT_ISSUE.md) - Known issue with STEP export and workarounds

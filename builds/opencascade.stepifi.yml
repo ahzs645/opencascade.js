@@ -181,6 +181,9 @@ mainBuild:
     - symbol: TopLoc_Location
 
     # ===== STEP I/O =====
+    # NOTE: STEP writing requires many internal classes that can't be
+    # bound in a minimal build. The code falls back to BREP export.
+    # For full STEP support, use the full 50MB build.
     - symbol: STEPControl_Writer
     - symbol: STEPControl_Reader
     - symbol: STEPControl_StepModelType

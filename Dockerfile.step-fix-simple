@@ -1,0 +1,33 @@
+# Dockerfile for OpenCascade.js STEP Export Fix (Simple Version)
+#
+# This uses the pre-built image and only modifies the final linking step
+# to try to fix the getWasmTableEntry error.
+#
+# Build:
+#   depot build -f Dockerfile.step-fix-simple --platform linux/amd64 --target artifacts --output type=local,dest=./dist-step-fix .
+
+FROM --platform=linux/amd64 donalffons/opencascade.js:latest AS builder
+
+ENV threading=single-threaded
+
+# Copy the build config with modified emccFlags (no LTO in linking)
+COPY builds/opencascade.full-step-fix.yml /opencascade.js/builds/
+
+WORKDIR /opencascade.js/
+
+# Build using the step-fix configuration (removes -flto from linking, adds ALLOW_TABLE_GROWTH)
+RUN ./src/buildFromYaml.py /opencascade.js/builds/opencascade.full-step-fix.yml
+
+# List outputs
+RUN ls -la /opencascade.js/opencascade.full.* 2>/dev/null || echo "Checking alternate locations..." && \
+    find /opencascade.js -name "opencascade.full.*" -type f 2>/dev/null | head -10
+
+# Copy to output directory
+RUN mkdir -p /output && \
+    cp /opencascade.js/opencascade.full.* /output/ 2>/dev/null || \
+    cp /opencascade.js/builds/opencascade.full.* /output/ 2>/dev/null || \
+    echo "Warning: Could not find output files"
+
+# Final stage
+FROM busybox AS artifacts
+COPY --from=builder /output/* /

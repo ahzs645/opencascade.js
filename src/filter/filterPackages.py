@@ -99,6 +99,10 @@ def filterPackages(packageName):
       # "V3d",
 
     "XBRepMesh", # This leads to a naming clas with BRepMesh
+
+    # AppBlend uses .gxx template files that require template parameters
+    # and cause compilation errors when processed as regular bindings
+    "AppBlend",
   ]:
     return False
 
