@@ -10,6 +10,7 @@ from Common import ocIncludeStatements
 import json
 import os
 from filter.filterPackages import filterPackages
+from filter.filterMethodOrProperties import get_filtered_deprecated_methods
 from TuInfo import TuInfo
 
 libraryBasePath = "/opencascade.js/build/bindings"
@@ -188,6 +189,34 @@ referenceTypeTemplateDefs = \
   "}\n" + \
   "\n"
 
+def print_deprecated_summary():
+  """Print a summary of all deprecated methods that were filtered out."""
+  deprecated = get_filtered_deprecated_methods()
+  if deprecated:
+    print("\n" + "=" * 60)
+    print("DEPRECATED METHODS SUMMARY")
+    print("=" * 60)
+    print(f"Total deprecated methods filtered: {len(deprecated)}")
+    print("-" * 60)
+
+    # Group by class
+    by_class = {}
+    for item in deprecated:
+      cls = item['class']
+      if cls not in by_class:
+        by_class[cls] = []
+      by_class[cls].append(item['spelling'])
+
+    for cls in sorted(by_class.keys()):
+      methods = by_class[cls]
+      print(f"\n{cls}:")
+      for method in sorted(methods):
+        print(f"  - {method}")
+
+    print("\n" + "=" * 60)
+    print("To include deprecated methods, set: OCJS_FILTER_DEPRECATED=0")
+    print("=" * 60 + "\n")
+
 def generateCustomCodeBindings(customCode):
   try:
     os.makedirs(libraryBasePath)
@@ -199,6 +228,9 @@ def generateCustomCodeBindings(customCode):
   tuInfo = TuInfo(customCode)
   process(tuInfo, ".cpp", embindGenerationFuncClasses, embindGenerationFuncTemplates, embindGenerationFuncEnums, embindPreamble, True)
   process(tuInfo, ".d.ts.json", typescriptGenerationFuncClasses, typescriptGenerationFuncTemplates, typescriptGenerationFuncEnums, "", True)
+
+  # Print summary of deprecated methods that were filtered
+  print_deprecated_summary()
 
 if __name__ == "__main__":
   try:
@@ -212,3 +244,6 @@ if __name__ == "__main__":
   process(tuInfo, ".cpp", embindGenerationFuncClasses, embindGenerationFuncTemplates, embindGenerationFuncEnums, embindPreamble, False)
 
   process(tuInfo, ".d.ts.json", typescriptGenerationFuncClasses, typescriptGenerationFuncTemplates, typescriptGenerationFuncEnums, "", False)
+
+  # Print summary of deprecated methods that were filtered
+  print_deprecated_summary()

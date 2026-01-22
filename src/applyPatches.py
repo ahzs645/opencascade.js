@@ -16,3 +16,13 @@ for dirpath, dirnames, filenames in os.walk("/opencascade.js/src/patches"):
       print("...done applying patch")
     except:
       raise Exception("Could not apply patch!")
+
+# Ensure OCCT macros do not leak into embind headers.
+intcurve_path = "/occt/src/IntCurve/IntCurve_IntConicConic.lxx"
+if os.path.exists(intcurve_path):
+  with open(intcurve_path, "r", encoding="utf-8") as f:
+    content = f.read()
+  if "#undef CONSTRUCTOR" not in content:
+    with open(intcurve_path, "a", encoding="utf-8") as f:
+      f.write("\n#undef CONSTRUCTOR\n#undef PERFORM\n")
+    print("appended #undef CONSTRUCTOR/PERFORM to " + intcurve_path)

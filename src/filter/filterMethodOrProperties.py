@@ -1,6 +1,60 @@
 import clang.cindex
+import os
+
+# Track deprecated methods that are filtered (for logging/reporting)
+_filtered_deprecated_methods = []
+
+def get_filtered_deprecated_methods():
+  """Returns a list of all deprecated methods that were filtered out."""
+  return _filtered_deprecated_methods
+
+def is_method_deprecated(methodOrProperty):
+  """
+  Check if a method/property is marked as deprecated using Clang's availability attribute.
+  This detects methods marked with [[deprecated]], __attribute__((deprecated)), or Standard_DEPRECATED macro.
+  """
+  # Method 1: Check availability attribute (works for __attribute__((deprecated)))
+  try:
+    if hasattr(clang.cindex, 'AvailabilityKind'):
+      if methodOrProperty.availability == clang.cindex.AvailabilityKind.DEPRECATED:
+        return True
+  except Exception:
+    pass
+
+  # Method 2: Check for deprecated attribute in cursor's attributes
+  try:
+    for child in methodOrProperty.get_children():
+      # Check for deprecated attribute annotation
+      if child.kind == clang.cindex.CursorKind.ANNOTATE_ATTR:
+        if 'deprecated' in child.spelling.lower():
+          return True
+      # Check for visibility/attribute annotations
+      if child.kind == clang.cindex.CursorKind.UNEXPOSED_ATTR:
+        # Try to get tokens to see if it contains deprecated
+        tokens = list(child.get_tokens())
+        for token in tokens:
+          if 'deprecated' in token.spelling.lower():
+            return True
+  except Exception:
+    pass
+
+  return False
 
 def filterMethodOrProperty(theClass, methodOrProperty):
+  # Check for deprecated methods and filter them out
+  # This auto-detects methods marked with Standard_DEPRECATED, [[deprecated]], or __attribute__((deprecated))
+  if os.environ.get('OCJS_FILTER_DEPRECATED', '1') == '1':
+    if is_method_deprecated(methodOrProperty):
+      method_info = f"{theClass.spelling}::{methodOrProperty.spelling}"
+      if method_info not in [m['method'] for m in _filtered_deprecated_methods]:
+        _filtered_deprecated_methods.append({
+          'class': theClass.spelling,
+          'method': method_info,
+          'spelling': methodOrProperty.spelling
+        })
+        print(f"[DEPRECATED] Filtering out: {method_info}")
+      return False
+
   # # error: no matching conversion for functional-style cast from '(lambda at /opencascade.js/build/modules/module.TKHLR.wasm.cpp:8477:153)' to 'std::function<HLRAlgo_BiPoint::PointsT &(HLRAlgo_PolyAlgo &, emscripten::val, emscripten::val, emscripten::val, emscripten::val, emscripten::val)>'
   # if \
   #   (theClass.spelling == "HLRAlgo_PolyAlgo" and methodOrProperty.spelling == "Show") or \

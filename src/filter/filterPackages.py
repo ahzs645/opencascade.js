@@ -72,7 +72,8 @@ def filterPackages(packageName):
 
       ## Toolkit TKOpenGl
       ## Toolkit TKOpenGles
-      # "OpenGl",
+      # OpenGL is not available in WebAssembly/Emscripten
+      "OpenGl",
 
       ## Toolkit TKService
       # "Aspect",

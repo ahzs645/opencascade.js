@@ -24,6 +24,7 @@ const BUILD_DIRS = [
   { name: 'dist', path: join(__dirname, 'dist') },
   { name: 'dist-stepifi', path: join(__dirname, 'dist-stepifi') },
   { name: 'dist-step-fix', path: join(__dirname, 'dist-step-fix') },
+  { name: 'dist-step-fix-debug', path: join(__dirname, 'dist-step-fix-debug') },
   { name: 'replicad', path: '/Users/ahmadjalil/Downloads/replicad-main/packages/replicad-opencascadejs/src' },
 ]
 
