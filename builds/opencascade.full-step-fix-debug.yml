@@ -70,6 +70,32 @@ additionalCppCode: |
       return ss.str();
     }
 
+    // STEP export to string - returns STEP file content as string
+    // mode: STEPControl_AsIs (0), STEPControl_ManifoldSolidBrep (1),
+    //       STEPControl_FacetedBrep (2), STEPControl_ShellBasedSurfaceModel (3),
+    //       STEPControl_GeometricCurveSet (4)
+    static std::string STEP_WriteToString(const TopoDS_Shape& shape, STEPControl_StepModelType mode = STEPControl_AsIs) {
+      STEPControl_Writer writer;
+      IFSelect_ReturnStatus status = writer.Transfer(shape, mode);
+      if (status != IFSelect_RetDone) {
+        return ""; // Transfer failed
+      }
+      std::ostringstream ss;
+      writer.WriteStream(ss);
+      return ss.str();
+    }
+
+    // IGES export to string - returns IGES file content as string
+    static std::string IGES_WriteToString(const TopoDS_Shape& shape) {
+      IGESControl_Controller::Init();
+      IGESControl_Writer writer;
+      writer.AddShape(shape);
+      writer.ComputeModel();
+      std::ostringstream ss;
+      writer.Write(ss, Standard_False);
+      return ss.str();
+    }
+
     // Note: TopoDS_Shape::Dump() not available in OCCT 7.6.3
     // Use DumpJson instead if needed
   };
