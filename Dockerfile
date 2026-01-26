@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:3.1.14 AS base-image
+FROM emscripten/emsdk:3.1.51 AS base-image
 
 RUN \
   apt update -y && \
@@ -24,9 +24,9 @@ RUN \
 
 RUN \
   pip install \
-  libclang==15.0.6.1 \
-  pyyaml==6.0 \
-  cerberus==1.3.4 \
+  libclang==16.0.6 \
+  pyyaml==6.0.1 \
+  cerberus==1.3.5 \
   argparse==1.4.0
 
 WORKDIR /rapidjson/
@@ -39,7 +39,7 @@ RUN \
 
 WORKDIR /occt/
 RUN \
-  curl -L "https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_6_3.tar.gz" -o occt.tar.gz && \
+  curl -L "https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_7_0.tar.gz" -o occt.tar.gz && \
   tar -xvf occt.tar.gz --strip-components=1
 
 WORKDIR /opencascade.js/

@@ -107,6 +107,14 @@
     "type": "string",
     "default": "",
   },
+  "additionalCppCodeFiles": {
+    "required": False,
+    "type": "list",
+    "schema": {
+      "type": "string",
+    },
+    "default": [],
+  },
   "generateTypescriptDefinitions": {
     "required": False,
     "type": "boolean",

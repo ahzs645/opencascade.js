@@ -1,11 +1,7 @@
 mainBuild:
     name: ocjs.full.js
 
-additionalCppCode: |
-    typedef Handle(IMeshTools_Context) Handle_IMeshTools_Context;
-    class OCJS {
-    public:
-      static Standard_Failure* getStandard_FailureData(intptr_t exceptionPtr) {
-        return reinterpret_cast<Standard_Failure*>(exceptionPtr);
-      }
-    };
+# Shared C++ code helpers
+additionalCppCodeFiles:
+  - ../shared/handle_typedef.cpp
+  - ../shared/ocjs_exception.cpp

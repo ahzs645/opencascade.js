@@ -15,66 +15,13 @@ mainBuild:
     - -sLLD_REPORT_UNDEFINED
     - --no-entry
 
-additionalCppCode: |
-  typedef Handle(IMeshTools_Context) Handle_IMeshTools_Context;
-
-  class OCJS {
-  public:
-    static Standard_Failure* getStandard_FailureData(intptr_t exceptionPtr) {
-      return reinterpret_cast<Standard_Failure*>(exceptionPtr);
-    }
-  };
-
-  // String-based I/O wrappers for methods that use Standard_OStream
-  // These avoid the "unbound types: std::basic_ostream<...>" error
-  #include <sstream>
-  #include <string>
-  #include <BRepTools.hxx>
-  #include <TopoDS_Shape.hxx>
-  #include <IGESControl_Writer.hxx>
-  #include <IGESControl_Controller.hxx>
-  #include <STEPControl_Writer.hxx>
-  #include <Interface_Static.hxx>
-
-  class OCJS_IO {
-  public:
-    // BRepTools::Write (ostream overload) -> std::string
-    static std::string BRep_WriteToString(const TopoDS_Shape& shape) {
-      std::ostringstream ss;
-      BRepTools::Write(shape, ss);
-      return ss.str();
-    }
-
-    // TopoDS_Shape::DumpJson -> std::string
-    static std::string Shape_DumpJsonToString(const TopoDS_Shape& shape, Standard_Integer depth = -1) {
-      std::ostringstream ss;
-      shape.DumpJson(ss, depth);
-      return ss.str();
-    }
-
-    // STEP export to string - returns STEP file content as string
-    // mode: STEPControl_AsIs (0), STEPControl_ManifoldSolidBrep (1),
-    //       STEPControl_FacetedBrep (2), STEPControl_ShellBasedSurfaceModel (3),
-    //       STEPControl_GeometricCurveSet (4)
-    static std::string STEP_WriteToString(const TopoDS_Shape& shape, STEPControl_StepModelType mode = STEPControl_AsIs) {
-      STEPControl_Writer writer;
-      IFSelect_ReturnStatus status = writer.Transfer(shape, mode);
-      if (status != IFSelect_RetDone) {
-        return ""; // Transfer failed
-      }
-      std::ostringstream ss;
-      writer.WriteStream(ss);
-      return ss.str();
-    }
-
-    // IGES export to string - returns IGES file content as string
-    static std::string IGES_WriteToString(const TopoDS_Shape& shape) {
-      IGESControl_Controller::Init();
-      IGESControl_Writer writer;
-      writer.AddShape(shape);
-      writer.ComputeModel();
-      std::ostringstream ss;
-      writer.Write(ss, Standard_False);
-      return ss.str();
-    }
-  };
+# Shared C++ code helpers
+additionalCppCodeFiles:
+  - shared/handle_typedef.cpp
+  - shared/ocjs_exception.cpp
+  - shared/ocjs_io_common.cpp
+  - shared/ocjs_io_brep.cpp
+  - shared/ocjs_io_step.cpp
+  - shared/ocjs_io_iges.cpp
+  - shared/ocjs_io_dumpjson.cpp
+  - shared/ocjs_io_end.cpp

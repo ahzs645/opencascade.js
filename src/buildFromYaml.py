@@ -95,7 +95,34 @@ try:
 except Exception:
   pass
 
-generateCustomCodeBindings(buildConfig["additionalCppCode"])
+# Combine additionalCppCode from inline and files
+def loadAdditionalCppCode(buildConfig, configFilePath):
+  """Load and combine additionalCppCode from inline content and files."""
+  cppCode = buildConfig.get("additionalCppCode", "")
+
+  # Load from files if specified
+  cppCodeFiles = buildConfig.get("additionalCppCodeFiles", [])
+  if cppCodeFiles:
+    configDir = os.path.dirname(configFilePath)
+    for filePath in cppCodeFiles:
+      # Resolve path relative to the config file directory
+      if not os.path.isabs(filePath):
+        fullPath = os.path.join(configDir, filePath)
+      else:
+        fullPath = filePath
+
+      if os.path.exists(fullPath):
+        with open(fullPath, "r") as f:
+          fileContent = f.read()
+          cppCode += "\n" + fileContent
+          print(f"Loaded additionalCppCode from: {filePath}")
+      else:
+        raise Exception(f"additionalCppCodeFile not found: {fullPath}")
+
+  return cppCode
+
+additionalCppCode = loadAdditionalCppCode(buildConfig, args.filename)
+generateCustomCodeBindings(additionalCppCode)
 compileCustomCodeBindings({
   "threading": os.environ['threading'],
 })

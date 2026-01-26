@@ -69,7 +69,8 @@ def filterEnums(child, customBuild):
 
 def processChildren(tuInfo: TuInfo, children, extension: str, filterFunction: Callable[[any], bool], processFunction: Callable[[any, any], str], preamble: str, customBuild: bool):
   for child in children:
-    if not filterFunction(child, customBuild) or child.spelling == "":
+    # Skip items with no spelling or unnamed items (e.g., "(unnamed enum at ...)")
+    if not filterFunction(child, customBuild) or child.spelling == "" or child.spelling.startswith("("):
       continue
 
     relOcFileName: str = child.extent.start.file.name.replace(occtBasePath, "")
